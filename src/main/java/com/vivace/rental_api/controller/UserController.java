@@ -1,5 +1,6 @@
 package com.vivace.rental_api.controller;
 
+import com.vivace.rental_api.config.JwtUtils;
 import com.vivace.rental_api.entity.User;
 import com.vivace.rental_api.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,12 +37,26 @@ public class UserController {
      * Phương thức: POST
      * Endpoint: /api/users/login
      */
+    
+    @Autowired
+    private JwtUtils jwtUtils; // Tiêm máy in thẻ vào controller
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestParam String email, @RequestParam String password) {
         try {
             User loggedInUser = userService.loginUser(email, password);
-            loggedInUser.setPasswordHash("[PROTECTED]");
-            return ResponseEntity.ok(loggedInUser);
+            
+            // 1. Sinh mã Token JWT độc bản cho phiên làm việc này
+            String token = jwtUtils.generateToken(loggedInUser.getEmail(), loggedInUser.getRole());
+            
+            // 2. Đóng gói dữ liệu trả về cho Frontend
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("token", token);
+            response.put("userId", loggedInUser.getId());
+            response.put("fullName", loggedInUser.getFullName());
+            response.put("role", loggedInUser.getRole());
+            
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
